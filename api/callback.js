@@ -1,3 +1,4 @@
+// /api/callback.js
 export default async function handler(req, res) {
   try {
     const { code, state } = req.query || {};
@@ -18,7 +19,6 @@ export default async function handler(req, res) {
       body: form
     });
     const data = await r.json();
-
     if (!data.access_token) {
       console.error('oauth error', data);
       return res.status(400).send(`OAuth failed: ${data.error || 'no token'}`);
@@ -28,8 +28,9 @@ export default async function handler(req, res) {
 <!doctype html><meta charset="utf-8">
 <script>
   (function() {
-    var msg = { token: ${JSON.stringify(data.access_token)} };
-    if (window.opener) window.opener.postMessage(msg, '*');
+    // Viktig: inkluder provider
+    var msg = { token: ${JSON.stringify(data.access_token)}, provider: "github" };
+    if (window.opener) window.opener.postMessage(msg, "*");
     window.close();
   })();
 </script>
