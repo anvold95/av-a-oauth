@@ -1,16 +1,25 @@
+import { randomUUID } from 'crypto';
+
 export default async function handler(req, res) {
-  const clientId = process.env.GITHUB_CLIENT_ID;
-  const base = process.env.OAUTH_BASE_URL || `https://${process.env.VERCEL_URL}`;
-  const state = crypto.randomUUID();
-  // enkel CSRF-beskyttelse
-  res.setHeader('Set-Cookie', `gh_oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=300`);
-  const redirectUri = `${base}/api/callback`;
+  try {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    if (!clientId) return res.status(500).send('Missing GITHUB_CLIENT_ID');
 
-  const url = new URL('https://github.com/login/oauth/authorize');
-  url.searchParams.set('client_id', clientId);
-  url.searchParams.set('redirect_uri', redirectUri);
-  url.searchParams.set('scope', 'repo'); // evt. 'public_repo' hvis repoet er offentlig
-  url.searchParams.set('state', state);
+    const host = req.headers['x-forwarded-host'] || process.env.VERCEL_URL;
+    const base = process.env.OAUTH_BASE_URL || `https://${host}`;
+    const state = randomUUID();
 
-  res.redirect(url.toString());
+    res.setHeader('Set-Cookie', `gh_oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=300`);
+
+    const url = new URL('https://github.com/login/oauth/authorize');
+    url.searchParams.set('client_id', clientId);
+    url.searchParams.set('redirect_uri', `${base}/api/callback`);
+    url.searchParams.set('scope', process.env.OAUTH_SCOPE || 'repo'); // bruk 'public_repo' for offentlige repo
+    url.searchParams.set('state', state);
+
+    res.writeHead(302, { Location: url.toString() }).end();
+  } catch (e) {
+    console.error('auth error', e);
+    res.status(500).send('Auth init failed');
+  }
 }
