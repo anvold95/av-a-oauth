@@ -1,35 +1,43 @@
 export default async function handler(req, res) {
-  const { code, state } = req.query;
-  const match = (req.headers.cookie || '').match(/gh_oauth_state=([^;]+)/);
-  if (!code || !state || !match || state !== match[1]) {
-    return res.status(400).send('Invalid OAuth state.');
-  }
+  try {
+    const { code, state } = req.query || {};
+    const cookie = req.headers.cookie || '';
+    const m = cookie.match(/gh_oauth_state=([^;]+)/);
+    if (!code || !state || !m || state !== m[1]) {
+      return res.status(400).send('Invalid OAuth state.');
+    }
 
-  const params = new URLSearchParams({
-    client_id: process.env.GITHUB_CLIENT_ID,
-    client_secret: process.env.GITHUB_CLIENT_SECRET,
-    code
-  });
+    const client_id = process.env.GITHUB_CLIENT_ID;
+    const client_secret = process.env.GITHUB_CLIENT_SECRET;
+    if (!client_id || !client_secret) return res.status(500).send('Missing OAuth env vars');
 
-  const r = await fetch('https://github.com/login/oauth/access_token', {
-    method: 'POST',
-    headers: { 'Accept': 'application/json' },
-    body: params
-  });
-  const data = await r.json();
-  const token = data.access_token;
+    const form = new URLSearchParams({ client_id, client_secret, code });
+    const r = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      body: form
+    });
+    const data = await r.json();
 
-  // send tokenet tilbake til CMS-vinduet
-  const html = `
+    if (!data.access_token) {
+      console.error('oauth error', data);
+      return res.status(400).send(`OAuth failed: ${data.error || 'no token'}`);
+    }
+
+    const html = `
 <!doctype html><meta charset="utf-8">
 <script>
   (function() {
-    var msg = { token: ${JSON.stringify(token || '')} };
+    var msg = { token: ${JSON.stringify(data.access_token)} };
     if (window.opener) window.opener.postMessage(msg, '*');
     window.close();
   })();
 </script>
 <p>Innlogging fullført – du kan lukke dette vinduet.</p>`;
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(html);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (e) {
+    console.error('callback error', e);
+    res.status(500).send('Callback failed');
+  }
 }
