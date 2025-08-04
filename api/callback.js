@@ -1,3 +1,4 @@
+// /api/callback.js
 export default async function handler(req, res) {
   try {
     const { code, state } = req.query || {};
@@ -22,9 +23,9 @@ export default async function handler(req, res) {
 (function(){
   var t=${JSON.stringify(token)};
   try {
-    // Nytt format
+    // Nyere klienter
     if (window.opener) window.opener.postMessage({ provider:"github", token:t }, "*");
-    // Eldre format
+    // Eldre klienter
     if (window.opener) window.opener.postMessage("authorization:github:success:"+t, "*");
   } catch(e){}
   window.close();
