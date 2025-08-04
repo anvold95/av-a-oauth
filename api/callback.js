@@ -22,12 +22,13 @@ export default async function handler(req, res) {
 (function(){
   var t=${JSON.stringify(token)};
   try {
-    // Nytt format
+    // Nyere Decap-klient
     if (window.opener) window.opener.postMessage({ provider:"github", token:t }, "*");
-    // Eldre format
+    // Eldre/klassisk klient
     if (window.opener) window.opener.postMessage("authorization:github:success:"+t, "*");
   } catch(e){}
-  window.close();
+  // Gi tid til meldingen før vi lukker
+  setTimeout(function(){ window.close(); }, 300);
 })();
 </script>
 <p>Innlogging fullført – du kan lukke dette vinduet.</p>`;
