@@ -1,5 +1,5 @@
-// /api/auth.js
 import { randomUUID } from 'crypto';
+
 export default async function handler(req, res) {
   const host = req.headers['x-forwarded-host'] || process.env.VERCEL_URL;
   const base = process.env.OAUTH_BASE_URL || `https://${host}`;
@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const url = new URL('https://github.com/login/oauth/authorize');
   url.searchParams.set('client_id', process.env.GITHUB_CLIENT_ID);
   url.searchParams.set('redirect_uri', `${base}/api/callback`);
-  url.searchParams.set('scope', process.env.OAUTH_SCOPE || 'repo'); // ev. 'public_repo'
+  url.searchParams.set('scope', process.env.OAUTH_SCOPE || 'repo'); // bruk 'public_repo' hvis repoet er offentlig
   url.searchParams.set('state', state);
 
   res.writeHead(302, { Location: url.toString() }).end();
